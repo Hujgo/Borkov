@@ -51,14 +51,14 @@ class BotClient(discord.Client):
         # 80-minute window to edit or delete your message before it's archived
         self.message_cache[message.channel.id].append({
             "message_id": message.id,
-            "expiry_time": datetime.now() + timedelta(seconds=10)
+            "expiry_time": datetime.now() + timedelta(minutes=80)
         })
 
         # print(self.message_cache)
 
     async def message_archiver(self):
         while True:
-            await asyncio.sleep(20)
+            await asyncio.sleep(4800)
             message_list = []
             dead_channels = []
 
