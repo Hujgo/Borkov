@@ -106,6 +106,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3ded4057c258ba199e2d26386d3af3780957ecaee6c4ef4041c6b4b8b97c0b06"
 
 [[package]]
+name = "borkov"
+version = "0.3.0"
+dependencies = [
+ "axum",
+ "chrono",
+ "flate2",
+ "mimalloc",
+ "reqwest",
+ "serde_json",
+ "tokio",
+ "url",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -792,20 +806,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "caa0f4137e1c0a72f4c651489402276c8e8e1cf081f3b0ba156d2cbeef09e86a"
 dependencies = [
  "rand_core",
-]
-
-[[package]]
-name = "reddit-rss"
-version = "0.3.0"
-dependencies = [
- "axum",
- "chrono",
- "flate2",
- "mimalloc",
- "reqwest",
- "serde_json",
- "tokio",
- "url",
 ]
 
 [[package]]
