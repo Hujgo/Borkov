@@ -66,18 +66,18 @@ set -eux
 . /build.env
 touch src/main.rs
 cargo build --release --locked --target "$TRIPLE"
-cp "target/$TRIPLE/release/reddit-rss" /reddit-rss
+cp "target/$TRIPLE/release/borkov" /borkov
 # must be fully static: scratch has no dynamic loader
-if llvm-readelf -l /reddit-rss | grep -q INTERP; then echo "binary is not static"; exit 1; fi
-llvm-readelf -p .comment /reddit-rss || true
+if llvm-readelf -l /borkov | grep -q INTERP; then echo "binary is not static"; exit 1; fi
+llvm-readelf -p .comment /borkov || true
 EOF
 
 
 FROM scratch
-COPY --from=builder /reddit-rss /reddit-rss
+COPY --from=builder /borkov /borkov
 # Don't let mimalloc commit memory up front: same speed, ~6 MB less RSS.
 ENV MIMALLOC_ARENA_EAGER_COMMIT=0
 # Unprivileged user; Docker allows binding port 80 inside the container network namespace.
 USER 65534:65534
 EXPOSE 80
-ENTRYPOINT ["/reddit-rss"]
+ENTRYPOINT ["/borkov"]
