@@ -1,17 +1,3 @@
-//! Tiny Reddit -> Atom feed bridge.
-//!
-//! Any Reddit listing URL works: take the reddit.com path, keep the `.rss`
-//! suffix, and point it at this server.
-//!
-//!   /r/selfhosted/top.rss?t=week            -> oauth.reddit.com/r/selfhosted/top?t=week
-//!   /user/someone/comments.rss              -> oauth.reddit.com/user/someone/comments
-//!   /r/selfhosted/comments/abc123.rss       -> a thread (post + comments)
-//!   /r/a+b/new.rss, /domain/github.com.rss, /r/x/search.rss?q=..&restrict_sr=1, ...
-//!
-//! Every query parameter is passed through; `limit` defaults to 25 like the old feeds.
-//! Items are rendered by their kind (t3 = post, t1 = comment, anything else generic),
-//! not by the URL they came from, so new listing endpoints need no code changes.
-
 use std::{
     env,
     sync::Arc,
@@ -70,7 +56,7 @@ impl Config {
                 .unwrap_or_else(|| "https://www.reddit.com/api/v1/access_token".into()),
             link_base: trim(env_opt("LINK_BASE").unwrap_or_else(|| "https://www.reddit.com".into())),
             user_agent: env_opt("USER_AGENT")
-                .unwrap_or_else(|| "linux:reddit-rss-bridge:0.2.0 (self-hosted)".into()),
+                .unwrap_or_else(|| "linux:borkov:0.3.0 (self-hosted)".into()),
             icon: env_opt("FEED_ICON").unwrap_or_else(|| DEFAULT_ICON.into()),
             public_url: env_opt("PUBLIC_URL").map(trim),
             default_limit: env_opt("DEFAULT_LIMIT").unwrap_or_else(|| "25".into()),
@@ -193,7 +179,22 @@ impl Inner {
                     403 | 404 => status,
                     _ => StatusCode::BAD_GATEWAY, // incl. 401: our credentials, not the client's
                 };
-                return Err(Error::Upstream(code, format!("reddit returned {status} for {url}")));
+                // keep reddit's explanation: www-authenticate (OAuth errors) + start of the body
+                let auth = resp
+                    .headers()
+                    .get(header::WWW_AUTHENTICATE)
+                    .and_then(|v| v.to_str().ok())
+                    .map(|v| format!(" [www-authenticate: {v}]"))
+                    .unwrap_or_default();
+                let body = resp.bytes().await.unwrap_or_default();
+                let body = String::from_utf8_lossy(&body[..body.len().min(400)])
+                    .split_whitespace()
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                return Err(Error::Upstream(
+                    code,
+                    format!("reddit returned {status} for {url}{auth}: {body}"),
+                ));
             }
             // parse straight from the body bytes: no intermediate String copy
             return serde_json::from_slice(&resp.bytes().await?)
@@ -652,12 +653,16 @@ async fn main() {
         }
     };
     let port = cfg.port;
-    let http = reqwest::Client::builder()
+    let mut builder = reqwest::Client::builder()
         .user_agent(cfg.user_agent.clone())
         .redirect(reqwest::redirect::Policy::none())
-        .timeout(Duration::from_secs(20))
-        .build()
-        .expect("http client");
+        .timeout(Duration::from_secs(20));
+    // HTTP/2 only towards Reddit: its CDN bot filter rejected our HTTP/1.1 requests (403)
+    // while accepting identical HTTP/2 ones. Plain-http bases (local test mocks) stay HTTP/1.1.
+    if cfg.api_base.starts_with("https://") && cfg.auth_url.starts_with("https://") {
+        builder = builder.http2_prior_knowledge();
+    }
+    let http = builder.build().expect("http client");
     let app: App = Arc::new(Inner {
         cfg,
         http,
