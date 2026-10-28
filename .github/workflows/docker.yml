@@ -2,7 +2,7 @@ name: Build image for Pi 5
 
 on:
   push:
-    branches: [main]
+    branches: [v2]
     paths:
       - "src/**"
       - "Cargo.toml"
