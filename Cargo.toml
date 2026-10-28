@@ -1,0 +1,25 @@
+[package]
+name = "reddit-rss"
+version = "0.3.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+tokio = { version = "1", features = ["macros", "rt", "net", "sync", "signal"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip"] }
+serde_json = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+url = "2"
+# musl's own malloc is slow; mimalloc is used as the global allocator instead
+mimalloc = { version = "0.1", default-features = false }
+# switches gzip decoding (pulled in by reqwest) to the faster zlib-rs backend
+flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+debug = false
+incremental = false
+strip = "symbols"
